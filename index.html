@@ -936,6 +936,7 @@
                 this.coinMat = new THREE.MeshLambertMaterial({map: this.coinTex, transparent: true, side: THREE.DoubleSide});
                 
                 this.setupEnvironment();
+                this.randomizeBackground(); // Chama o sorteio de fundo ao inicializar o mundo
             }
 
             setupEnvironment() {
@@ -944,20 +945,6 @@
                 const skyMesh = new THREE.Mesh(skyGeo, this.skyMat);
                 skyMesh.position.set(0, 160, -400); 
                 this.scene.add(skyMesh);
-
-                new THREE.TextureLoader().load('cidade.png', 
-                    (tex) => {
-                        if (THREE.SRGBColorSpace) tex.colorSpace = THREE.SRGBColorSpace;
-                        else tex.encoding = 3001;
-                        this.skyMat.map = tex;
-                        this.skyMat.needsUpdate = true;
-                    }, 
-                    undefined, 
-                    () => {
-                        this.skyMat.map = TextureGen.createSkylineTexture();
-                        this.skyMat.needsUpdate = true;
-                    }
-                );
 
                 const groundGeo = new THREE.PlaneGeometry(100, 1000);
                 this.groundMat = new THREE.MeshLambertMaterial({map: TextureGen.createGravelTexture()});
@@ -1006,6 +993,27 @@
                     this.scene.add(bR);
                     this.buildings.push(bR);
                 }
+            }
+
+            // Sorteia aleatoriamente a imagem de fundo da cidade
+            randomizeBackground() {
+                const bgImages = ['cidade.png', 'cidade1.png'];
+                const randomImage = bgImages[Math.floor(Math.random() * bgImages.length)];
+
+                new THREE.TextureLoader().load(randomImage, 
+                    (tex) => {
+                        if (THREE.SRGBColorSpace) tex.colorSpace = THREE.SRGBColorSpace;
+                        else tex.encoding = 3001;
+                        this.skyMat.map = tex;
+                        this.skyMat.needsUpdate = true;
+                    }, 
+                    undefined, 
+                    () => {
+                        // Fallback procedural se falhar em carregar a imagem
+                        this.skyMat.map = TextureGen.createSkylineTexture();
+                        this.skyMat.needsUpdate = true;
+                    }
+                );
             }
 
             getGroundHeight(player) {
@@ -1379,6 +1387,7 @@
                 this.camLookY = 1.5;
 
                 this.world.reset();
+                this.world.randomizeBackground(); // Adicionado o sorteio de fundo
                 this.clock.start();
 
                 document.getElementById('main-menu').classList.add('hidden');
