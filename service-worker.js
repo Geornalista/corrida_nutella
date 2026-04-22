@@ -1,4 +1,4 @@
-const CACHE_NAME = 'subway-clone-v1';
+const CACHE_NAME = 'v0';
 
 // Adicione aqui todos os arquivos que precisam funcionar offline
 const ASSETS_TO_CACHE = [
