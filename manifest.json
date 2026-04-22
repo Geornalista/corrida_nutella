@@ -1,0 +1,10 @@
+{
+  "name": "Subway Surfers 3D",
+  "short_name": "Subway Custom",
+  "description": "Um clone 3D realista de Subway Surfers rodando direto no navegador.",
+  "start_url": "./index.html",
+  "display": "fullscreen",
+  "background_color": "#1a1a24",
+  "theme_color": "#1a1a24",
+  "orientation": "portrait",
+}
