@@ -9,6 +9,10 @@ const ASSETS_TO_CACHE = [
     './tonini.png',
     './trocha.png',
     './werner.png',
+    './gugu.png',
+    './brubru.png',
+    './caioba.png',
+    './cidade1.png',
     './cidade.png',
     '[https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js](https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js)'
 ];
