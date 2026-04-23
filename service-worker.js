@@ -1,4 +1,4 @@
-const CACHE_NAME = 'v0';
+const CACHE_NAME = 'v1-high_score';
 
 // Adicione aqui todos os arquivos que precisam funcionar offline
 const ASSETS_TO_CACHE = [
