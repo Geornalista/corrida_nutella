@@ -68,7 +68,18 @@
             z-index: 10;
         }
 
-        #score-container, #coin-container {
+        #score-container {
+            font-size: 32px;
+        }
+
+        #highscore-display {
+            font-size: 16px;
+            color: #FFD700; /* Dourado */
+            margin-top: -5px;
+            transition: color 0.3s;
+        }
+
+        #coin-container {
             font-size: 28px;
             display: flex;
             align-items: center;
@@ -89,10 +100,20 @@
             color: #B8860B;
         }
 
+        /* Animação quando bate o recorde durante o jogo */
+        @keyframes pulseGold {
+            0% { transform: scale(1); color: #FFF; text-shadow: 2px 2px 0 #000; }
+            50% { transform: scale(1.1); color: #FFD700; text-shadow: 0 0 10px #FFD700, 2px 2px 0 #000; }
+            100% { transform: scale(1); color: #FFF; text-shadow: 2px 2px 0 #000; }
+        }
+        .new-record-anim {
+            animation: pulseGold 0.6s infinite alternate !important;
+            color: #FFD700 !important;
+        }
+
         /* Balão de Fala (Quadrinhos) */
         #speech-bubble {
             position: absolute;
-            /* A posição inicial é fora da tela, o JS atualizará dinamicamente */
             top: -1000px; 
             left: -1000px;
             transform: translate(-50%, -100%) scale(1);
@@ -234,9 +255,8 @@
 
         .char-img-container {
             width: 140px;
-            height: 186px; /* Proporção 3:4 */
+            height: 186px; 
             margin-bottom: 10px;
-            /* O drop-shadow funciona perfeitamente com PNGs transparentes, criando um contorno 3D no menu */
             filter: drop-shadow(0 8px 10px rgba(0,0,0,0.4));
         }
 
@@ -245,7 +265,6 @@
             height: 100%;
             object-fit: cover;
             border-radius: 10px;
-            /* Fundo removido para não interferir na transparência das novas imagens PNG */
             background-color: transparent; 
         }
 
@@ -329,7 +348,10 @@
     <div id="ui-container">
         <!-- In-Game HUD -->
         <div id="hud-top">
-            <div id="score-container" class="hud-text">0m</div>
+            <div style="display: flex; flex-direction: column;">
+                <div id="score-container" class="hud-text">0 PTS</div>
+                <div id="highscore-display" class="hud-text">RECORDE: 0</div>
+            </div>
             <div id="coin-container" class="hud-text">
                 <span class="coin-icon">$</span><span id="coin-count">0</span>
             </div>
@@ -364,9 +386,6 @@
                 Desktop: Setas / WASD para Mover, Pular e Deslizar<br>
                 Mobile: Deslize para Cima/Baixo/Esquerda/Direita
             </div>
-            <div style="margin-top: 10px; font-size: 11px; color: #fff; font-family: sans-serif;">
-                <b>Use imagens PNG com fundo transparente para qualidade perfeita!</b>
-            </div>
         </div>
     </div>
 
@@ -376,14 +395,14 @@
             <div class="title">VOCÊ FOI PEGO!</div>
             
             <div class="stats-grid">
-                <div class="stat-label hud-text">PONTOS:</div>
-                <div class="stat-value hud-text" id="go-score">0m</div>
+                <div class="stat-label hud-text">PONTOS FINAIS:</div>
+                <div class="stat-value hud-text" id="go-score">0</div>
                 
                 <div class="stat-label hud-text">MOEDAS:</div>
                 <div class="stat-value hud-text" id="go-coins">0</div>
                 
-                <div class="stat-label hud-text">RECORDE:</div>
-                <div class="stat-value hud-text" id="go-highscore">0m</div>
+                <div class="stat-label hud-text">MELHOR RECORDE:</div>
+                <div class="stat-value hud-text" id="go-highscore">0</div>
             </div>
 
             <button class="btn" id="btn-restart">JOGAR NOVAMENTE</button>
@@ -462,6 +481,12 @@
                 this.playTone(150, 'sawtooth', 0.5, 0.1, 50); 
             }
 
+            // Som especial de triunfo para novo recorde
+            playTriumph() {
+                this.playTone(600, 'square', 0.1, 0.1, 800);
+                setTimeout(() => this.playTone(800, 'square', 0.2, 0.1, 1200), 100);
+            }
+
             startBGM() {
                 this.init();
                 this.stopBGM();
@@ -489,11 +514,10 @@
         }
 
         // ===== DADOS DOS PERSONAGENS =====
-        // Somente o quarteto oficial, com cores e frases personalizadas!
         const PLAYERS_DATA = [
             { id: 0, name: "Tonini", image: "tonini.png", shirt: 0x4B3621, pants: 0x2F4F4F, phrase: "DELICINHA!" },
             { id: 1, name: "Werner", image: "werner.png", shirt: 0x708090, pants: 0x2F4F4F, phrase: "BUNDA DE GRUPO" },
-            { id: 2, name: "Trocha", image: "trocha.png", shirt: 0x2F4F4F, pants: 0x4B3621, phrase: "MUITO GENERALISTA! NHÉ" },
+            { id: 2, name: "Trocha", image: "trocha.png", shirt: 0x2F4F4F, pants: 0x4B3621, phrase: "VOU FURAR COM VOCÊ" },
             { id: 3, name: "Dingo", image: "dingo.png", shirt: 0x8B4513, pants: 0x4B3621, phrase: "KAVERNISTA" }
         ];
 
@@ -512,6 +536,8 @@
             GRAVITY: 65,
             SLIDE_DURATION: 0.6, 
             LANE_CHANGE_SPEED: 18, 
+            
+            COIN_SCORE_VALUE: 50, // Pontos que 1 moeda vale no Score Final
             
             COLORS: {
                 SKY_FOG: 0xffb782 
@@ -749,10 +775,7 @@
                     canvas.height = Math.round(512 * (4/3)); 
                     const ctx = canvas.getContext('2d');
                     
-                    // Limpa o canvas garantindo que o fundo seja transparente para imagens PNG recortadas
                     ctx.clearRect(0, 0, canvas.width, canvas.height);
-                    
-                    // Desenha a imagem nativa (sem algoritmo de chroma key para preservar os brancos e a qualidade original)
                     ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
 
                     const tex = new THREE.CanvasTexture(canvas);
@@ -893,7 +916,7 @@
                     this.hitbox.yOffset = 0.5;
                     this.audio.playSlide(); 
                 } else if (this.isJumping) {
-                    this.velocityY = -CONFIG.JUMP_FORCE; // Fast fall
+                    this.velocityY = -CONFIG.JUMP_FORCE; 
                     this.isSliding = true;
                     this.slideTimer = CONFIG.SLIDE_DURATION;
                     this.hitbox.height = 1.0;
@@ -1227,14 +1250,16 @@
                 
                 this.state = 'MENU'; 
                 this.score = 0;
+                this.distance = 0;
                 this.coins = 0;
                 this.highScore = localStorage.getItem('subwayCloneHighScore') || 0;
+                this.newRecordReached = false;
                 
                 this.selectedCharIdx = 0; 
                 this.camLookY = 1.5;
 
                 // Controles do balão
-                this.lastScoreBubble = 0;
+                this.lastDistanceBubble = 0;
                 this.lastCoinBubble = 0;
                 this.bubbleTimeout = null;
 
@@ -1368,8 +1393,15 @@
             startGame() {
                 this.state = 'PLAYING';
                 this.score = 0;
+                this.distance = 0;
                 this.coins = 0;
-                this.lastScoreBubble = 0;
+                this.newRecordReached = false;
+                
+                // Reseta status de recorde visual
+                document.getElementById('highscore-display').classList.remove('new-record-anim');
+                document.getElementById('highscore-display').innerText = `RECORDE: ${this.highScore}`;
+                
+                this.lastDistanceBubble = 0;
                 this.lastCoinBubble = 0;
                 
                 this.audio.init();
@@ -1387,7 +1419,7 @@
                 this.camLookY = 1.5;
 
                 this.world.reset();
-                this.world.randomizeBackground(); // Adicionado o sorteio de fundo
+                this.world.randomizeBackground(); 
                 this.clock.start();
 
                 document.getElementById('main-menu').classList.add('hidden');
@@ -1406,19 +1438,19 @@
                 setTimeout(() => flash.style.opacity = '0', 200);
 
                 if (this.score > this.highScore) {
-                    this.highScore = Math.floor(this.score);
+                    this.highScore = this.score;
                     localStorage.setItem('subwayCloneHighScore', this.highScore);
                 }
 
-                document.getElementById('go-score').innerText = Math.floor(this.score) + 'm';
+                document.getElementById('go-score').innerText = this.score + ' PTS';
                 document.getElementById('go-coins').innerText = this.coins;
-                document.getElementById('go-highscore').innerText = this.highScore + 'm';
+                document.getElementById('go-highscore').innerText = this.highScore + ' PTS';
                 
                 document.getElementById('game-over').classList.remove('hidden');
             }
 
             updateUI() {
-                document.getElementById('score-container').innerText = Math.floor(this.score) + 'm';
+                document.getElementById('score-container').innerText = this.score + ' PTS';
                 document.getElementById('coin-count').innerText = this.coins;
             }
 
@@ -1435,7 +1467,7 @@
                 if (this.bubbleTimeout) clearTimeout(this.bubbleTimeout);
                 this.bubbleTimeout = setTimeout(() => {
                     bubble.classList.add('bubble-hide');
-                }, 500); // Fica na tela por 0.5 segundo
+                }, 3000); // Fica na tela por 3 segundos
             }
 
             animate() {
@@ -1472,16 +1504,33 @@
                             setTimeout(() => ct.style.transform = 'scale(1)', 100);
                         }
                         
-                        this.score += this.world.speed * dt * 0.1;
+                        // Pontuação Combinada: Distância percorrida + Moedas x COIN_SCORE_VALUE
+                        this.distance += this.world.speed * dt * 0.5; // Multiplicador para o medidor de distância
+                        this.score = Math.floor(this.distance) + (this.coins * CONFIG.COIN_SCORE_VALUE);
                         this.updateUI();
 
-                        // Verifica disparos do balão de fala (Múltiplos de 200m ou 20 moedas)
-                        let currentScoreFloor = Math.floor(this.score);
-                        if (currentScoreFloor > 0 && currentScoreFloor % 200 === 0 && currentScoreFloor !== this.lastScoreBubble) {
+                        // Lógica de Novo Recorde Atingido Durante a Partida
+                        if (this.score > this.highScore && this.highScore > 0 && !this.newRecordReached) {
+                            this.newRecordReached = true;
+                            const hsDisplay = document.getElementById('highscore-display');
+                            hsDisplay.classList.add('new-record-anim');
+                            hsDisplay.innerText = "NOVO RECORDE!";
+                            this.audio.playTriumph(); // Toca somzinho de comemoração
+                        }
+
+                        // Atualiza o recorde em tempo real na tela se ele já foi batido
+                        if (this.newRecordReached) {
+                            this.highScore = this.score;
+                        }
+
+                        // Verifica disparos do balão de fala por Distância (Múltiplos de 200m)
+                        let currentDistFloor = Math.floor(this.distance);
+                        if (currentDistFloor > 0 && currentDistFloor % 200 === 0 && currentDistFloor !== this.lastDistanceBubble) {
                             this.showSpeechBubble();
-                            this.lastScoreBubble = currentScoreFloor;
+                            this.lastDistanceBubble = currentDistFloor;
                         }
                         
+                        // Verifica disparos do balão de fala por Moedas (Múltiplos de 20)
                         if (this.coins > 0 && this.coins % 20 === 0 && this.coins !== this.lastCoinBubble) {
                             this.showSpeechBubble();
                             this.lastCoinBubble = this.coins;
